@@ -47,7 +47,7 @@ export function Navbar() {
 
           <div className="flex items-center gap-[18px]">
             <Link
-              href="/menu"
+              href="/order"
               className="border border-tfc-orange text-tfc-orange font-body font-bold text-[14px] uppercase tracking-[0.8px] px-7 py-[10px] rounded-[6px] hover:bg-tfc-orange hover:text-white transition-all duration-300 flex items-center gap-2"
             >
               <UtensilsCrossed className="w-4 h-4" />
@@ -88,7 +88,7 @@ export function Navbar() {
                 ))}
               </ul>
               <Link
-                href="/menu"
+                href="/order"
                 className="inline-flex justify-center border border-tfc-orange text-tfc-orange font-body font-bold text-sm uppercase tracking-[0.8px] px-5 py-3 rounded-[6px] hover:bg-tfc-orange hover:text-white transition-all duration-300"
               >
                 Demo Order POS
