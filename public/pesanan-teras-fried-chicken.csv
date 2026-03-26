@@ -1,0 +1,101 @@
+Tanggal Pemesanan,Bulan,Pesanan,Jenis,Size,Qty,Pembayaran,Harga Satuan,Harga Total,Total modal,Total margin,Status,Owner
+1/1/2026,January,Ayam Geprek Reguler,Ayam,Reguler,1,Cash,18000,18000,8500,9500,Selesai,kupa
+1/4/2026,January,Ayam Geprek Reguler,Ayam,Reguler,1,Qris,18000,18000,8500,9500,Selesai,kupa
+1/6/2026,January,Ayam Goreng Original Jumbo,Ayam,Jumbo,1,Cash,22000,22000,10000,12000,Selesai,hafiz
+1/8/2026,January,Paket Nasi Ayam Geprek Jumbo,Paket,Jumbo,1,Cash,35000,35000,17000,18000,Selesai,kupa
+1/8/2026,January,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,1,Qris,22000,22000,8100,13900,Selesai,hafiz
+1/8/2026,January,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,kupa
+1/10/2026,January,Ayam Goreng Crispy Reguler,Ayam,Reguler,2,Cash,17000,34000,16200,17800,Selesai,kupa
+1/11/2026,January,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,2,Cash,27000,54000,24600,29400,Selesai,hafiz
+1/12/2026,January,Kentang Goreng Reguler,Snack,Reguler,1,Cash,12000,12000,4800,7200,Selesai,kupa
+1/15/2026,January,Ayam Goreng Crispy Reguler,Ayam,Reguler,1,Qris,17000,17000,8100,8900,Selesai,kupa
+1/18/2026,January,Ayam Goreng Original Reguler,Ayam,Reguler,1,Qris,15000,15000,7200,7800,Selesai,hafiz
+1/19/2026,January,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,hafiz
+1/19/2026,January,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,hafiz
+1/21/2026,January,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Qris,27000,27000,12300,14700,Selesai,hafiz
+1/22/2026,January,Ayam Goreng Crispy Reguler,Ayam,Reguler,1,Cash,17000,17000,8100,8900,Proses,kupa
+1/23/2026,January,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,1,Cash,22000,22000,8100,13900,Proses,hafiz
+1/26/2026,January,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,1,Qris,22000,22000,8100,13900,Selesai,kupa
+1/27/2026,January,Paket Nasi Ayam Original Reguler,Paket,Reguler,1,Cash,25000,25000,11500,13500,Selesai,kupa
+1/27/2026,January,Ayam Goreng Original Jumbo,Ayam,Jumbo,1,Qris,22000,22000,10000,12000,Selesai,kupa
+1/30/2026,January,Ayam Geprek Reguler,Ayam,Reguler,1,Cash,18000,18000,8500,9500,Selesai,hafiz
+1/30/2026,January,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Cash,27000,27000,12300,14700,Selesai,kupa
+2/1/2026,February,Paket Nasi Ayam Geprek Jumbo,Paket,Jumbo,1,Qris,35000,35000,17000,18000,Selesai,hafiz
+2/1/2026,February,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Cash,27000,27000,12300,14700,Selesai,hafiz
+2/1/2026,February,Ayam Goreng Original Reguler,Ayam,Reguler,1,Cash,15000,15000,7200,7800,Selesai,kupa
+2/1/2026,February,Ayam Goreng Original Jumbo,Ayam,Jumbo,2,Qris,22000,44000,20000,24000,Batal,hafiz
+2/1/2026,February,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,hafiz
+2/2/2026,February,Paket Nasi Ayam Original Jumbo,Paket,Jumbo,1,Cash,32000,32000,15000,17000,Selesai,hafiz
+2/3/2026,February,Es Teh Manis Reguler,Minuman,Reguler,3,Cash,5000,15000,4500,10500,Selesai,kupa
+2/5/2026,February,Paket Nasi Ayam Original Reguler,Paket,Reguler,1,Qris,25000,25000,11500,13500,Selesai,hafiz
+2/6/2026,February,Paket Nasi Ayam Original Reguler,Paket,Reguler,1,Cash,25000,25000,11500,13500,Selesai,kupa
+2/7/2026,February,Es Teh Manis Reguler,Minuman,Reguler,3,Qris,5000,15000,4500,10500,Selesai,kupa
+2/7/2026,February,Ayam Goreng Original Reguler,Ayam,Reguler,2,Qris,15000,30000,14400,15600,Selesai,hafiz
+2/8/2026,February,Kentang Goreng Reguler,Snack,Reguler,2,Qris,12000,24000,9600,14400,Selesai,kupa
+2/9/2026,February,Es Teh Manis Reguler,Minuman,Reguler,2,Qris,5000,10000,3000,7000,Selesai,hafiz
+2/10/2026,February,Ayam Geprek Jumbo,Ayam,Jumbo,1,Cash,25000,25000,8500,16500,Selesai,kupa
+2/10/2026,February,Es Teh Manis Reguler,Minuman,Reguler,2,Qris,5000,10000,3000,7000,Selesai,kupa
+2/12/2026,February,Ayam Goreng Crispy Reguler,Ayam,Reguler,1,Cash,17000,17000,8100,8900,Selesai,kupa
+2/13/2026,February,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,2,Qris,27000,54000,24600,29400,Selesai,hafiz
+2/13/2026,February,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,3,Cash,27000,81000,36900,44100,Selesai,kupa
+2/14/2026,February,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Cash,27000,27000,12300,14700,Selesai,kupa
+2/14/2026,February,Es Teh Manis Reguler,Minuman,Reguler,2,Cash,5000,10000,3000,7000,Selesai,kupa
+2/15/2026,February,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,kupa
+2/16/2026,February,Ayam Geprek Jumbo,Ayam,Jumbo,1,Qris,25000,25000,8500,16500,Selesai,kupa
+2/17/2026,February,Ayam Geprek Jumbo,Ayam,Jumbo,1,Qris,25000,25000,8500,16500,Selesai,kupa
+2/17/2026,February,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,3,Cash,22000,66000,24300,41700,Selesai,kupa
+2/17/2026,February,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,hafiz
+2/19/2026,February,Ayam Geprek Jumbo,Ayam,Jumbo,1,Qris,25000,25000,8500,16500,Selesai,kupa
+2/19/2026,February,Paket Nasi Ayam Original Jumbo,Paket,Jumbo,2,Qris,32000,64000,30000,34000,Selesai,kupa
+2/20/2026,February,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,kupa
+2/21/2026,February,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Cash,27000,27000,12300,14700,Selesai,kupa
+2/21/2026,February,Paket Nasi Ayam Original Jumbo,Paket,Jumbo,2,Qris,32000,64000,30000,34000,Selesai,kupa
+2/23/2026,February,Ayam Goreng Original Jumbo,Ayam,Jumbo,2,Cash,22000,44000,20000,24000,Proses,hafiz
+2/23/2026,February,Ayam Geprek Reguler,Ayam,Reguler,2,Qris,18000,36000,17000,19000,Batal,kupa
+2/24/2026,February,Paket Nasi Ayam Original Reguler,Paket,Reguler,2,Qris,25000,50000,23000,27000,Selesai,kupa
+2/25/2026,February,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,kupa
+2/27/2026,February,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,kupa
+3/2/2026,March,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,hafiz
+3/5/2026,March,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,3,Qris,27000,81000,36900,44100,Selesai,hafiz
+3/5/2026,March,Ayam Goreng Crispy Reguler,Ayam,Reguler,1,Qris,17000,17000,8100,8900,Selesai,kupa
+3/5/2026,March,Ayam Goreng Original Jumbo,Ayam,Jumbo,1,Qris,22000,22000,10000,12000,Selesai,kupa
+3/5/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,4,Qris,22000,88000,32400,55600,Selesai,kupa
+3/6/2026,March,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Qris,27000,27000,12300,14700,Proses,kupa
+3/6/2026,March,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,hafiz
+3/6/2026,March,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,hafiz
+3/7/2026,March,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Qris,27000,27000,12300,14700,Selesai,hafiz
+3/8/2026,March,Tahu Crispy Reguler,Snack,Reguler,2,Qris,10000,20000,7800,12200,Selesai,hafiz
+3/8/2026,March,Ayam Goreng Crispy Reguler,Ayam,Reguler,3,Qris,17000,51000,24300,26700,Selesai,hafiz
+3/8/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,1,Qris,22000,22000,8100,13900,Selesai,kupa
+3/9/2026,March,Kentang Goreng Reguler,Snack,Reguler,2,Qris,12000,24000,9600,14400,Selesai,kupa
+3/9/2026,March,Ayam Geprek Reguler,Ayam,Reguler,1,Cash,18000,18000,8500,9500,Selesai,kupa
+3/9/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,1,Cash,22000,22000,8100,13900,Selesai,hafiz
+3/9/2026,March,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,kupa
+3/10/2026,March,Tahu Crispy Reguler,Snack,Reguler,2,Qris,10000,20000,7800,12200,Proses,hafiz
+3/12/2026,March,Paket Nasi Ayam Original Reguler,Paket,Reguler,1,Qris,25000,25000,11500,13500,Selesai,kupa
+3/13/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,2,Qris,22000,44000,16200,27800,Selesai,kupa
+3/13/2026,March,Es Teh Manis Reguler,Minuman,Reguler,1,Cash,5000,5000,1500,3500,Selesai,hafiz
+3/13/2026,March,Es Teh Manis Reguler,Minuman,Reguler,1,Qris,5000,5000,1500,3500,Selesai,kupa
+3/14/2026,March,Paket Nasi Ayam Original Jumbo,Paket,Jumbo,1,Qris,32000,32000,15000,17000,Selesai,kupa
+3/14/2026,March,Es Teh Manis Reguler,Minuman,Reguler,2,Cash,5000,10000,3000,7000,Selesai,kupa
+3/15/2026,March,Ayam Goreng Original Jumbo,Ayam,Jumbo,1,Cash,22000,22000,10000,12000,Selesai,hafiz
+3/16/2026,March,Ayam Goreng Original Reguler,Ayam,Reguler,1,Qris,15000,15000,7200,7800,Selesai,kupa
+3/17/2026,March,Paket Nasi Ayam Original Reguler,Paket,Reguler,3,Cash,25000,75000,34500,40500,Selesai,kupa
+3/17/2026,March,Ayam Geprek Reguler,Ayam,Reguler,1,Qris,18000,18000,8500,9500,Selesai,kupa
+3/17/2026,March,Paket Nasi Ayam Original Reguler,Paket,Reguler,3,Cash,25000,75000,34500,40500,Selesai,kupa
+3/18/2026,March,Kentang Goreng Reguler,Snack,Reguler,2,Cash,12000,24000,9600,14400,Selesai,hafiz
+3/18/2026,March,Tahu Crispy Reguler,Snack,Reguler,4,Cash,10000,40000,15600,24400,Selesai,kupa
+3/18/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,2,Cash,22000,44000,16200,27800,Selesai,kupa
+3/18/2026,March,Ayam Goreng Original Jumbo,Ayam,Jumbo,1,Cash,22000,22000,10000,12000,Batal,kupa
+3/18/2026,March,Paket Nasi Ayam Original Jumbo,Paket,Jumbo,4,Cash,32000,128000,60000,68000,Selesai,hafiz
+3/18/2026,March,Ayam Goreng Original Jumbo,Ayam,Jumbo,1,Qris,22000,22000,10000,12000,Selesai,hafiz
+3/19/2026,March,Paket Nasi Ayam Original Reguler,Paket,Reguler,1,Qris,25000,25000,11500,13500,Selesai,hafiz
+3/19/2026,March,Paket Nasi Ayam Geprek Reguler,Paket,Reguler,1,Qris,27000,27000,12300,14700,Selesai,kupa
+3/21/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,2,Qris,22000,44000,16200,27800,Selesai,kupa
+3/21/2026,March,Ayam Goreng Crispy Jumbo,Ayam,Jumbo,2,Qris,22000,44000,16200,27800,Selesai,kupa
+3/23/2026,March,Ayam Goreng Crispy Reguler,Ayam,Reguler,1,Qris,17000,17000,8100,8900,Selesai,kupa
+3/23/2026,March,Ayam Goreng Crispy Reguler,Ayam,Reguler,1,Qris,17000,17000,8100,8900,Selesai,hafiz
+3/24/2026,March,Tahu Crispy Reguler,Snack,Reguler,1,Cash,10000,10000,3900,6100,Selesai,hafiz
+3/25/2026,March,Tahu Crispy Reguler,Snack,Reguler,3,Cash,10000,30000,11700,18300,Selesai,hafiz
+3/26/2026,March,Tahu Crispy Reguler,Snack,Reguler,1,Qris,10000,10000,3900,6100,Selesai,kupa
+3/26/2026,March,Paket Nasi Ayam Original Reguler,Paket,Reguler,1,Cash,25000,25000,11500,13500,Proses,kupa
