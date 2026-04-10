@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Drumstick, Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -44,13 +45,23 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo / Branding */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-tfc-brown rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Drumstick className="w-8 h-8 text-tfc-orange" />
+          <div className="w-20 h-20 relative mx-auto mb-4">
+            <Image
+              src="/images/logo_bg.svg"
+              alt="Teras Fried Chicken"
+              fill
+              sizes="80px"
+              className="object-contain drop-shadow-sm"
+              priority
+            />
           </div>
-          <h1 className="font-display text-2xl text-tfc-brown font-bold">
-            Teras Fried Chicken POS
+          <h1 className="font-display text-2xl text-tfc-brown font-bold leading-tight">
+            Teras Fried Chicken
           </h1>
-          <p className="text-sm font-body text-tfc-muted mt-1">
+          <p className="font-body text-xs text-tfc-orange font-semibold tracking-widest uppercase mt-1">
+            POS Dashboard
+          </p>
+          <p className="text-sm font-body text-tfc-muted mt-2">
             Masukkan kredensial untuk melanjutkan
           </p>
         </div>

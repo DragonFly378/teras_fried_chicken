@@ -95,6 +95,7 @@ interface SheetRow {
   status: string;
   owner: string;
   deliver: string;
+  notes: string;
 }
 
 type CategoryFilter = "Semua" | string;
@@ -182,6 +183,7 @@ export function OrderForm() {
   const [status, setStatus] = useState("Belum bayar");
   const [tglPengantaran, setTglPengantaran] = useState("");
   const [notes, setNotes] = useState("");
+  const [uangDiterima, setUangDiterima] = useState("");
 
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -266,6 +268,8 @@ export function OrderForm() {
 
   const totalHarga = cart.reduce((sum, item) => sum + item.harga * item.qty, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+  const parsedUang = parseInt(uangDiterima.replace(/\D/g, "")) || 0;
+  const kembalian = parsedUang - totalHarga;
 
   // ── Submit ───────────────────────────────────────────
   const buildRows = (): SheetRow[] => {
@@ -284,6 +288,7 @@ export function OrderForm() {
       status,
       owner: pembeli,
       deliver: tglPengantaran ? formatTanggal(tglPengantaran) : "",
+      notes,
     }));
   };
 
@@ -310,6 +315,7 @@ export function OrderForm() {
         setStatus("Belum bayar");
         setTglPengantaran("");
         setNotes("");
+        setUangDiterima("");
         setMobileTab("menu");
         Swal.fire({
           icon: "success",
@@ -605,6 +611,40 @@ export function OrderForm() {
                 </Select>
               </div>
             </div>
+            {/* Cash: Uang Diterima & Kembalian */}
+            {pembayaran === "Cash" && (
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <label className={labelClass}>Uang Diterima</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={uangDiterima ? formatRupiah(parsedUang) : ""}
+                    onChange={(e) =>
+                      setUangDiterima(e.target.value.replace(/\D/g, ""))
+                    }
+                    className="h-9 text-sm bg-white border-tfc-brown/15 text-tfc-brown font-bold placeholder:text-tfc-muted placeholder:font-normal focus:border-tfc-orange focus:ring-tfc-orange/20"
+                  />
+                </div>
+                {parsedUang > 0 && (
+                  <div
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-body font-bold ${
+                      kembalian >= 0
+                        ? "bg-green-50 text-green-700 border border-green-200"
+                        : "bg-red-50 text-red-600 border border-red-200"
+                    }`}
+                  >
+                    <span>Kembalian</span>
+                    <span>
+                      {kembalian >= 0
+                        ? formatRupiah(kembalian)
+                        : `Kurang ${formatRupiah(Math.abs(kembalian))}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setShowExtra(!showExtra)}
@@ -907,6 +947,28 @@ export function OrderForm() {
                     {pendingRows[0]?.status}
                   </p>
                 </div>
+                {pembayaran === "Cash" && parsedUang > 0 && (
+                  <>
+                    <div>
+                      <span className="text-tfc-muted">Uang Diterima</span>
+                      <p className="font-semibold text-tfc-brown">
+                        {formatRupiah(parsedUang)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-tfc-muted">Kembalian</span>
+                      <p
+                        className={`font-semibold ${
+                          kembalian >= 0 ? "text-green-700" : "text-red-600"
+                        }`}
+                      >
+                        {kembalian >= 0
+                          ? formatRupiah(kembalian)
+                          : `Kurang ${formatRupiah(Math.abs(kembalian))}`}
+                      </p>
+                    </div>
+                  </>
+                )}
                 {pendingRows[0]?.deliver && (
                   <div>
                     <span className="text-tfc-muted">Pengantaran</span>

@@ -7,6 +7,8 @@ import Image from "next/image";
 import {
   LayoutDashboard,
   ShoppingCart,
+  Wallet,
+  ReceiptText,
   LogOut,
   Menu,
   X,
@@ -20,6 +22,8 @@ const SIDEBAR_COLLAPSED_KEY = "tfc_sidebar_collapsed";
 const sidebarItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/order", label: "Order", icon: ShoppingCart },
+  { href: "/history", label: "History Transaksi", icon: ReceiptText },
+  { href: "/cashflow", label: "Cashflow", icon: Wallet },
 ];
 
 export default function DashboardLayout({

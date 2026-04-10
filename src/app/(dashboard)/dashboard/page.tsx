@@ -9,6 +9,8 @@ import {
   Wallet,
   Loader2,
   AlertCircle,
+  Crown,
+  Drumstick,
 } from "lucide-react";
 import {
   LineChart,
@@ -38,10 +40,48 @@ interface Scorecard {
   statusProfit: string;
 }
 
+// Raw shape dari backend — menerima field lama (pendapatan/profit/pengeluaran*)
+// atau field baru (totalPendapatan/totalProfit/rincianPengeluaran).
+// Normalizer di bawah akan konversi ke `Scorecard` yang dipakai komponen.
+interface RawScorecard {
+  // new shape
+  totalPendapatan?: number;
+  totalProfit?: number;
+  totalPengeluaran?: number;
+  rincianPengeluaran?: { operasional?: number; bahanBaku?: number };
+  // legacy shape
+  pendapatan?: number;
+  profit?: number;
+  pengeluaranOperasional?: number;
+  pengeluaranBahanBaku?: number;
+  // shared
+  grossMarginPersen?: number;
+  statusProfit?: string;
+}
+
 interface KpiResponse {
   status: string;
   bulan: string;
-  scorecard: Scorecard;
+  scorecard: RawScorecard;
+}
+
+function normalizeScorecard(raw: RawScorecard): Scorecard {
+  const operasional =
+    raw.rincianPengeluaran?.operasional ?? raw.pengeluaranOperasional ?? 0;
+  const bahanBaku =
+    raw.rincianPengeluaran?.bahanBaku ?? raw.pengeluaranBahanBaku ?? 0;
+  const totalPendapatan = raw.totalPendapatan ?? raw.pendapatan ?? 0;
+  const totalProfit = raw.totalProfit ?? raw.profit ?? 0;
+  const totalPengeluaran = raw.totalPengeluaran ?? operasional + bahanBaku;
+
+  return {
+    totalPendapatan,
+    totalProfit,
+    grossMarginPersen: raw.grossMarginPersen ?? 0,
+    totalPengeluaran,
+    rincianPengeluaran: { operasional, bahanBaku },
+    statusProfit: raw.statusProfit ?? (totalProfit > 0 ? "PROFIT" : "RUGI"),
+  };
 }
 
 interface TrenDataset {
@@ -66,19 +106,34 @@ interface ChartRow {
   Profit: number | null;
 }
 
-// ── Helpers ────────────────────────────────────────────
-function formatRupiah(n: number): string {
-  if (Math.abs(n) >= 1_000_000) {
-    return `Rp${(n / 1_000_000).toFixed(2).replace(/\.?0+$/, "")} jt`;
-  }
-  if (Math.abs(n) >= 1_000) {
-    return `Rp${(n / 1_000).toFixed(0)} rb`;
-  }
-  return `Rp${n.toLocaleString("id-ID")}`;
+interface TopMenuItem {
+  namaMenu: string;
+  jumlahOrderan: number;
+  pendapatan: number;
 }
 
-function formatRupiahFull(n: number): string {
-  return `Rp${n.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
+interface TopMenuResponse {
+  status: string;
+  bulan: string;
+  totalMenu: number;
+  data: TopMenuItem[];
+}
+
+// ── Helpers ────────────────────────────────────────────
+function formatRupiah(n: number | null | undefined): string {
+  const v = Number(n) || 0;
+  if (Math.abs(v) >= 1_000_000) {
+    return `Rp${(v / 1_000_000).toFixed(2).replace(/\.?0+$/, "")} jt`;
+  }
+  if (Math.abs(v) >= 1_000) {
+    return `Rp${(v / 1_000).toFixed(0)} rb`;
+  }
+  return `Rp${v.toLocaleString("id-ID")}`;
+}
+
+function formatRupiahFull(n: number | null | undefined): string {
+  const v = Number(n) || 0;
+  return `Rp${v.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
 }
 
 const BULAN_ID: Record<string, string> = {
@@ -140,7 +195,11 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-function computeFromCSV(csvText: string): { kpi: KpiResponse; tren: TrenResponse } {
+function computeFromCSV(csvText: string): {
+  kpi: KpiResponse;
+  tren: TrenResponse;
+  topMenu: TopMenuResponse;
+} {
   const rows = parseCSV(csvText);
   const completed = rows.filter((r) => r["Status"] === "Selesai");
 
@@ -196,13 +255,46 @@ function computeFromCSV(csvText: string): { kpi: KpiResponse; tren: TrenResponse
     },
   };
 
-  return { kpi, tren };
+  // Top menu bulan terakhir yang ada datanya — dari CSV, aggregate by base name
+  // (tanpa ukuran supaya menu yang sama tergroup).
+  const currentMonthRows = completed.filter((r) => r["Bulan"] === currentMonth);
+  const menuMap = new Map<string, { jumlahOrderan: number; pendapatan: number }>();
+  for (const r of currentMonthRows) {
+    const fullName = r["Pesanan"] || "";
+    const size = r["Size"] || "";
+    const baseName = size
+      ? fullName.replace(new RegExp(`\\s+${size}$`, "i"), "").trim()
+      : fullName;
+    const nameKey = baseName || fullName;
+    const qty = Number(r["Qty"]) || 0;
+    const total = Number(r["Harga Total"]) || 0;
+    if (menuMap.has(nameKey)) {
+      const m = menuMap.get(nameKey)!;
+      m.jumlahOrderan += qty;
+      m.pendapatan += total;
+    } else {
+      menuMap.set(nameKey, { jumlahOrderan: qty, pendapatan: total });
+    }
+  }
+  const topMenuSorted = Array.from(menuMap.entries())
+    .map(([namaMenu, v]) => ({ namaMenu, ...v }))
+    .sort((a, b) => b.jumlahOrderan - a.jumlahOrderan);
+
+  const topMenu: TopMenuResponse = {
+    status: "success",
+    bulan: currentMonth,
+    totalMenu: topMenuSorted.length,
+    data: topMenuSorted.slice(0, 5),
+  };
+
+  return { kpi, tren, topMenu };
 }
 
 // ── Component ──────────────────────────────────────────
 export default function DashboardPage() {
   const [kpi, setKpi] = useState<KpiResponse | null>(null);
   const [tren, setTren] = useState<TrenResponse | null>(null);
+  const [topMenu, setTopMenu] = useState<TopMenuResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dataSource, setDataSource] = useState<"api" | "csv">("api");
@@ -211,16 +303,21 @@ export default function DashboardPage() {
     async function fetchData() {
       // Try API first
       try {
-        const [kpiRes, trenRes] = await Promise.all([
+        const [kpiRes, trenRes, topMenuRes] = await Promise.all([
           fetch(`${API_BASE}?action=kpi`),
           fetch(`${API_BASE}?action=tren`),
+          fetch(`${API_BASE}?action=topmenu`),
         ]);
         const kpiData = await kpiRes.json();
         const trenData = await trenRes.json();
+        const topMenuData = await topMenuRes.json();
 
         if (kpiData.status === "success" && trenData.status === "success") {
           setKpi(kpiData);
           setTren(trenData);
+          if (topMenuData.status === "success") {
+            setTopMenu(topMenuData);
+          }
           setDataSource("api");
           setLoading(false);
           return;
@@ -234,9 +331,14 @@ export default function DashboardPage() {
         const csvRes = await fetch("/pesanan-teras-fried-chicken.csv");
         if (!csvRes.ok) throw new Error("CSV not found");
         const csvText = await csvRes.text();
-        const { kpi: csvKpi, tren: csvTren } = computeFromCSV(csvText);
+        const {
+          kpi: csvKpi,
+          tren: csvTren,
+          topMenu: csvTopMenu,
+        } = computeFromCSV(csvText);
         setKpi(csvKpi);
         setTren(csvTren);
+        setTopMenu(csvTopMenu);
         setDataSource("csv");
       } catch {
         setError("Gagal memuat data. API dan CSV tidak tersedia.");
@@ -269,9 +371,10 @@ export default function DashboardPage() {
     );
   }
 
-  const sc = kpi.scorecard;
+  const sc = normalizeScorecard(kpi.scorecard);
   const isProfit = sc.statusProfit === "PROFIT";
   const bulanId = BULAN_ID[kpi.bulan] || kpi.bulan;
+  const rincian = sc.rincianPengeluaran;
 
   // Build chart data
   const currentYear = new Date().getFullYear();
@@ -313,9 +416,9 @@ export default function DashboardPage() {
       value: formatRupiahFull(sc.totalPengeluaran),
       icon: Wallet,
       color: "bg-amber-50 text-amber-600",
-      sub: sc.rincianPengeluaran.operasional > 0
-        ? `Ops ${formatRupiah(sc.rincianPengeluaran.operasional)} · Bahan ${formatRupiah(sc.rincianPengeluaran.bahanBaku)}`
-        : `Bahan Baku ${formatRupiah(sc.rincianPengeluaran.bahanBaku)}`,
+      sub: rincian.operasional > 0
+        ? `Ops ${formatRupiah(rincian.operasional)} · Bahan ${formatRupiah(rincian.bahanBaku)}`
+        : `Bahan Baku ${formatRupiah(rincian.bahanBaku)}`,
     },
   ];
 
@@ -432,6 +535,87 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Top 5 Menu Terlaris */}
+      {topMenu && topMenu.data.length > 0 && (
+        <div className="bg-white rounded-xl border border-tfc-brown/10 p-4 lg:p-6">
+          <div className="mb-4 lg:mb-5 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-body text-lg text-tfc-brown font-semibold flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500" />
+                Top 5 Menu Terlaris
+              </h2>
+              <p className="font-body text-xs text-tfc-muted mt-0.5">
+                Menu paling laris bulan {BULAN_ID[topMenu.bulan] || topMenu.bulan}
+              </p>
+            </div>
+            <span className="shrink-0 text-[10px] font-body font-semibold text-tfc-muted uppercase tracking-wider px-2 py-1 rounded-full bg-tfc-surface">
+              {topMenu.totalMenu} menu total
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {(() => {
+              const maxQty = Math.max(
+                ...topMenu.data.map((m) => m.jumlahOrderan),
+                1,
+              );
+              return topMenu.data.map((menu, i) => {
+                const barPct = (menu.jumlahOrderan / maxQty) * 100;
+                const rankColors = [
+                  "bg-amber-100 text-amber-700 border-amber-200",
+                  "bg-slate-100 text-slate-600 border-slate-200",
+                  "bg-orange-100 text-orange-700 border-orange-200",
+                  "bg-tfc-surface text-tfc-muted border-tfc-brown/10",
+                  "bg-tfc-surface text-tfc-muted border-tfc-brown/10",
+                ];
+                return (
+                  <div
+                    key={menu.namaMenu}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-tfc-brown/5 hover:bg-tfc-surface/40 transition-colors"
+                  >
+                    {/* Rank badge */}
+                    <div
+                      className={`shrink-0 w-9 h-9 rounded-full border flex items-center justify-center font-body text-sm font-bold ${rankColors[i]}`}
+                    >
+                      #{i + 1}
+                    </div>
+
+                    {/* Name + progress bar */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-body text-sm font-semibold text-tfc-brown truncate flex items-center gap-1.5">
+                          <Drumstick className="w-3.5 h-3.5 text-tfc-orange shrink-0" />
+                          {menu.namaMenu}
+                        </p>
+                        <span className="shrink-0 font-body text-[11px] text-tfc-muted">
+                          {menu.jumlahOrderan}x
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 bg-tfc-surface rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-tfc-brown to-tfc-orange rounded-full transition-all"
+                          style={{ width: `${barPct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Revenue */}
+                    <div className="shrink-0 text-right">
+                      <p className="font-body text-[10px] text-tfc-muted uppercase tracking-wide">
+                        Pendapatan
+                      </p>
+                      <p className="font-body text-sm font-bold text-tfc-brown whitespace-nowrap">
+                        {formatRupiahFull(menu.pendapatan)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

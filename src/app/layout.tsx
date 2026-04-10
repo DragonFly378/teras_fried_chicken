@@ -56,13 +56,29 @@ export default function RootLayout({
         {children}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
+            __html:
+              process.env.NODE_ENV === "production"
+                ? `
+                  if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register('/sw.js');
+                    });
+                  }
+                `
+                : `
+                  // Dev mode: unregister any existing SW and clear its caches
+                  // so stale chunks don't get served on normal refresh (F5).
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                      regs.forEach(function(r) { r.unregister(); });
+                    });
+                  }
+                  if (typeof caches !== 'undefined') {
+                    caches.keys().then(function(keys) {
+                      keys.forEach(function(k) { caches.delete(k); });
+                    });
+                  }
+                `,
           }}
         />
       </body>
