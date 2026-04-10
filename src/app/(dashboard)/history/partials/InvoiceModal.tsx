@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
-import { Printer, X } from "lucide-react";
+import { Download, Printer, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/pos-menu";
 
@@ -50,7 +57,7 @@ function formatTanggalPanjang(iso: string): string {
   });
 }
 
-// ── Invoice Template ────────────────────────────────────
+// ── Invoice Template (reusable, no id) ──────────────────
 function InvoiceTemplate({ invoice }: { invoice: Invoice }) {
   const subtotal = invoice.items.reduce(
     (sum, it) => sum + Number(it.hargaTotal || 0),
@@ -235,78 +242,134 @@ export function InvoiceModal({
   open,
   onOpenChange,
 }: InvoiceModalProps) {
-  // Lock body scroll while modal is open
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Close on ESC
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onOpenChange(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange]);
+    setMounted(true);
+  }, []);
+
+  const handleDownloadPDF = async () => {
+    if (!previewRef.current || !invoice) return;
+    setDownloading(true);
+    try {
+      // Dynamic import — keeps initial bundle light
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      const canvas = await html2canvas(previewRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginMm = 10;
+      const usableWidth = pageWidth - marginMm * 2;
+
+      const imgRatio = canvas.height / canvas.width;
+      const imgWidth = usableWidth;
+      const imgHeight = imgWidth * imgRatio;
+
+      // If taller than page, scale down to fit page height
+      let finalWidth = imgWidth;
+      let finalHeight = imgHeight;
+      if (imgHeight > pageHeight - marginMm * 2) {
+        finalHeight = pageHeight - marginMm * 2;
+        finalWidth = finalHeight / imgRatio;
+      }
+
+      const xOffset = (pageWidth - finalWidth) / 2;
+      pdf.addImage(imgData, "PNG", xOffset, marginMm, finalWidth, finalHeight);
+
+      pdf.save(`${invoice.invoiceId}.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
   };
 
-  if (!invoice || !open) return null;
+  if (!invoice) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={() => onOpenChange(false)}
-      />
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="p-0 sm:max-w-2xl">
+          {/* Hidden-visually a11y labels */}
+          <DialogTitle className="sr-only">
+            Invoice {invoice.invoiceId}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Detail invoice untuk {invoice.owner}
+          </DialogDescription>
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[95vh] overflow-hidden">
-        {/* Close button */}
-        <button
-          type="button"
-          title="Tutup"
-          onClick={() => onOpenChange(false)}
-          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/90 hover:bg-tfc-surface text-tfc-muted hover:text-tfc-brown flex items-center justify-center transition-colors shadow-sm"
-        >
-          <X className="w-4 h-4" />
-        </button>
+          {/* Scrollable container */}
+          <div className="overflow-y-auto max-h-[95vh]">
+            {/* Preview — used for html2canvas capture */}
+            <div ref={previewRef}>
+              <InvoiceTemplate invoice={invoice} />
+            </div>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto max-h-[95vh]">
+            {/* Action buttons */}
+            <div className="px-6 sm:px-8 py-4 bg-tfc-surface/40 border-t border-tfc-brown/10 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                onClick={handlePrint}
+                disabled={downloading}
+                className="bg-white text-tfc-brown border border-tfc-brown/20 hover:bg-tfc-surface font-body font-semibold h-9 text-sm"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Cetak
+              </Button>
+              <Button
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={downloading}
+                className="bg-tfc-brown text-white hover:bg-tfc-brown/90 font-body font-semibold h-9 text-sm"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print-only portal — rendered as direct child of <body>.
+          Hidden on screen via CSS (display: none), shown only in @media print. */}
+      {mounted &&
+        open &&
+        createPortal(
           <div id="invoice-print">
             <InvoiceTemplate invoice={invoice} />
-          </div>
-
-          {/* Action buttons */}
-          <div className="px-6 sm:px-8 py-4 bg-tfc-surface/40 border-t border-tfc-brown/10 flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="bg-white text-tfc-brown border border-tfc-brown/20 hover:bg-tfc-surface font-body font-semibold h-9 text-sm"
-            >
-              Tutup
-            </Button>
-            <Button
-              type="button"
-              onClick={handlePrint}
-              className="bg-tfc-brown text-white hover:bg-tfc-brown/90 font-body font-semibold h-9 text-sm"
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Cetak
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

@@ -59,3 +59,33 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(61, 28, 10, 0.4);
 }
+
+/* Print-only invoice
+   #invoice-print is rendered as a direct child of <body> via React Portal.
+   By default it's hidden on-screen; during @media print we hide every other
+   direct child of body and show only #invoice-print. */
+#invoice-print {
+  display: none;
+}
+
+@media print {
+  /* Hide everything at the top level of body ... */
+  body > *:not(#invoice-print) {
+    display: none !important;
+  }
+  /* ... and show only the invoice container */
+  #invoice-print {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+  }
+}
