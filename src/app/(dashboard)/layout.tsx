@@ -15,6 +15,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
+import { useOfflineOrders } from "@/hooks/useOfflineOrders";
+import { SyncSidebarWidget } from "@/components/shared/SyncSidebarWidget";
 
 const AUTH_KEY = "tfc_pos_auth";
 const SIDEBAR_COLLAPSED_KEY = "tfc_sidebar_collapsed";
@@ -36,6 +38,8 @@ export default function DashboardLayout({
   const [hydrated, setHydrated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const { pendingCount, isOnline, isSyncing, countdown, syncNow } =
+    useOfflineOrders();
 
   useEffect(() => {
     const isAuthed = sessionStorage.getItem(AUTH_KEY) === "1";
@@ -142,6 +146,16 @@ export default function DashboardLayout({
             );
           })}
         </nav>
+
+        {/* Sync Status Widget */}
+        <SyncSidebarWidget
+          isOnline={isOnline}
+          pendingCount={pendingCount}
+          isSyncing={isSyncing}
+          countdown={countdown}
+          collapsed={collapsed}
+          onSyncNow={syncNow}
+        />
 
         {/* Collapse toggle (desktop only) */}
         <div className="hidden lg:block px-3 py-2">

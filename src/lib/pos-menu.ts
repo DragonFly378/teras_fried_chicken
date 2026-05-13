@@ -1,3 +1,5 @@
+import { API_URL } from "@/lib/api/config";
+
 export interface PosMenuItem {
   id: string;
   name: string;
@@ -7,6 +9,74 @@ export interface PosMenuItem {
     harga: number;
     modal: number;
   }[];
+}
+
+interface PricelistRow {
+  Produk: string;
+  Jenis: string;
+  Ukuran: string;
+  Harga: number;
+  Modal: number;
+  Untung: number;
+  Margin: number;
+}
+
+const CACHE_KEY = "tfc-pos-menu-cache";
+
+function transformPricelist(data: PricelistRow[]): PosMenuItem[] {
+  const map = new Map<string, PosMenuItem>();
+  for (const row of data) {
+    const baseName = row.Produk
+      .replace(new RegExp(`\\s+${row.Ukuran}$`, "i"), "")
+      .trim();
+    const id = baseName.toLowerCase().replace(/\s+/g, "-");
+    if (map.has(id)) {
+      map.get(id)!.variants.push({
+        ukuran: row.Ukuran,
+        harga: row.Harga,
+        modal: row.Modal,
+      });
+    } else {
+      map.set(id, {
+        id,
+        name: baseName,
+        jenis: row.Jenis as PosMenuItem["jenis"],
+        variants: [{ ukuran: row.Ukuran, harga: row.Harga, modal: row.Modal }],
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
+export async function fetchPosMenuItems(): Promise<PosMenuItem[]> {
+  try {
+    const res = await fetch(`${API_URL}?action=pricelist`);
+    const json = await res.json();
+    if (json.status === "ok" && json.data) {
+      const items = transformPricelist(json.data);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(items));
+      } catch {
+        // localStorage quota exceeded — ignore
+      }
+      return items;
+    }
+  } catch {
+    // Network error — try cache
+  }
+
+  // Fallback 1: localStorage cache
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      return JSON.parse(cached) as PosMenuItem[];
+    }
+  } catch {
+    // localStorage not available
+  }
+
+  // Fallback 2: hardcoded items
+  return posMenuItems;
 }
 
 export const posMenuItems: PosMenuItem[] = [

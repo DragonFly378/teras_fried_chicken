@@ -10,7 +10,8 @@
 //
 // Catatan: file ini menggunakan global var SPREADSHEET_ID
 // yang dideklarasikan di code.js (file utama) dan bergantung
-// pada generateInvoiceId() yang dideklarasikan di invoiceModule.js.
+// pada generateInvoiceId() dan appendTransaksiPesanan()
+// yang dideklarasikan di invoiceModule.js.
 // ================================================
 
 var PESANAN_SHEET_NAME = "Pesanan TFC";
@@ -56,6 +57,9 @@ function postPesananTFC(data) {
       row.notes || "", // Notes
     ]);
   }
+
+  // Tulis 1 baris ringkasan ke sheet "Transaksi Pesanan"
+  appendTransaksiPesanan(invoiceId, rows);
 
   return {
     status: "success",

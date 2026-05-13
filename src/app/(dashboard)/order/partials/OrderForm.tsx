@@ -29,9 +29,8 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatRupiah } from "@/lib/pos-menu";
-
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbz5UQlOzXNGrbBbSNPSHX8gTcNUKL1oE8TlJhIj-FbLhJ-9StEi3-t9rG6jKe_hTxNC/exec";
+import { API_URL } from "@/lib/api/config";
+import { useOfflineOrders } from "@/hooks/useOfflineOrders";
 
 const BULAN = [
   "January",
@@ -169,6 +168,7 @@ function transformPricelist(data: PricelistRow[]): { items: PosMenuItem[]; categ
 
 // ── Component ──────────────────────────────────────────
 export function OrderForm() {
+  const { saveOrder, syncNow } = useOfflineOrders();
   const [menuItems, setMenuItems] = useState<PosMenuItem[]>([]);
   const [categories, setCategories] = useState<string[]>(["Semua"]);
   const [menuLoading, setMenuLoading] = useState(true);
@@ -301,45 +301,78 @@ export function OrderForm() {
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "pesanan", rows: pendingRows }),
+      // Build invoice object for IndexedDB storage
+      const invoiceItems = cart.map((item) => ({
+        pesanan: `${item.menuName} ${item.ukuran}`,
+        jenis: item.jenis,
+        size: item.ukuran,
+        qty: item.qty,
+        hargaSatuan: item.harga,
+        hargaTotal: item.harga * item.qty,
+      }));
+
+      const now = new Date();
+      const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+      const yyyy = wib.getUTCFullYear();
+      const mm = String(wib.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(wib.getUTCDate()).padStart(2, "0");
+      const seq = String(Math.floor(Math.random() * 9999) + 1).padStart(4, "0");
+      const localInvoiceId = `INV-TFC-${yyyy}${mm}${dd}${seq}`;
+
+      await saveOrder({
+        payload: { action: "pesanan", rows: pendingRows },
+        invoice: {
+          invoiceId: localInvoiceId,
+          tanggalPemesanan: tanggal,
+          bulan: getBulan(tanggal),
+          pembayaran,
+          status,
+          owner: pembeli,
+          deliver: tglPengantaran ? formatTanggal(tglPengantaran) : "",
+          notes,
+          items: invoiceItems,
+          totalQty: totalItems,
+          totalHarga,
+          totalModal: cart.reduce((s, i) => s + i.modal * i.qty, 0),
+          totalMargin: cart.reduce(
+            (s, i) => s + (i.harga - i.modal) * i.qty,
+            0,
+          ),
+        },
+        createdAt: Date.now(),
+        synced: false,
+        attempts: 0,
+        lastError: "",
       });
-      const result = await response.json();
-      if (result.status === "success" || result.status === "ok") {
-        setShowConfirm(false);
-        setCart([]);
-        setPembeli("");
-        setTanggal(getTodayString());
-        setPembayaran("Qris");
-        setStatus("Belum bayar");
-        setTglPengantaran("");
-        setNotes("");
-        setUangDiterima("");
-        setMobileTab("menu");
-        Swal.fire({
-          icon: "success",
-          title: "Pesanan Berhasil!",
-          text: "Pesanan berhasil dikirim ke Google Sheet.",
-          confirmButtonColor: "#3D1C0A",
-          timer: 3000,
-          timerProgressBar: true,
-        });
-      } else {
-        setShowConfirm(false);
-        Swal.fire({
-          icon: "error",
-          title: "Gagal!",
-          text: result.message || "Terjadi kesalahan saat mengirim pesanan.",
-          confirmButtonColor: "#3D1C0A",
-        });
-      }
+
+      setShowConfirm(false);
+      setCart([]);
+      setPembeli("");
+      setTanggal(getTodayString());
+      setPembayaran("Qris");
+      setStatus("Belum bayar");
+      setTglPengantaran("");
+      setNotes("");
+      setUangDiterima("");
+      setMobileTab("menu");
+
+      Swal.fire({
+        icon: "success",
+        title: "Pesanan Tersimpan!",
+        text: "Pesanan disimpan & akan otomatis dikirim ke Google Sheet.",
+        confirmButtonColor: "#3D1C0A",
+        timer: 3000,
+        timerProgressBar: true,
+      });
+
+      // Trigger background sync
+      syncNow();
     } catch {
       setShowConfirm(false);
       Swal.fire({
         icon: "error",
         title: "Gagal!",
-        text: "Gagal mengirim. Cek koneksi internet.",
+        text: "Gagal menyimpan pesanan.",
         confirmButtonColor: "#3D1C0A",
       });
     } finally {

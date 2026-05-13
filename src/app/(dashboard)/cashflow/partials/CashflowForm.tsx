@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatRupiah } from "@/lib/pos-menu";
+import { API_URL } from "@/lib/api/config";
 
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbz5UQlOzXNGrbBbSNPSHX8gTcNUKL1oE8TlJhIj-FbLhJ-9StEi3-t9rG6jKe_hTxNC/exec";
+const GOOGLE_SCRIPT_URL = API_URL;
 
 const BULAN = [
   "January", "February", "March", "April", "May", "June",

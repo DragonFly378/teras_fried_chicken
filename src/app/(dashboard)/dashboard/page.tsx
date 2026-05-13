@@ -23,9 +23,9 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { API_URL } from "@/lib/api/config";
 
-const API_BASE =
-  "https://script.google.com/macros/s/AKfycbz5UQlOzXNGrbBbSNPSHX8gTcNUKL1oE8TlJhIj-FbLhJ-9StEi3-t9rG6jKe_hTxNC/exec";
+const API_BASE = API_URL;
 
 // ── Types ──────────────────────────────────────────────
 interface Scorecard {

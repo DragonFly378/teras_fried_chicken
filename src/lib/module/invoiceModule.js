@@ -3,12 +3,20 @@
 // Invoice Module - Teras Fried Chicken (TFC)
 // ================================================
 // Berisi:
-//   - generateInvoiceId(sheet)        -> dipanggil pesananModule.postPesananTFC
-//   - getInvoiceHistoryBulanIni(bln)  -> riwayat invoice/pesanan bulan tertentu
+//   - generateInvoiceId(sheet)              -> dipanggil pesananModule.postPesananTFC
+//   - appendTransaksiPesanan(invoiceId,rows) -> tulis 1 baris ringkasan ke "Transaksi Pesanan"
+//   - getInvoiceHistoryBulanIni(bln)        -> riwayat invoice/pesanan bulan tertentu
 //
 // Function history membaca sheet PESANAN_SHEET_NAME (= "Pesanan TFC")
 // dari spreadsheet SPREADSHEET_ID (global var dari code.js).
+//
+// Sheet "Transaksi Pesanan" schema:
+//   A=id | B=tanggal | C=bulan | D=nama_pemesan | E=total_modal
+//   F=total_price | G=discount_price | H=final_price | I=total_margin
+//   J=metode_pembayaran | K=kembalian | L=status
 // ================================================
+
+var TRANSAKSI_SHEET_NAME = "Transaksi Pesanan";
 
 var BULAN_NAMES_INVOICE = [
   "January",
@@ -64,6 +72,52 @@ function generateInvoiceId(sheet) {
   var nextSeq = maxSeq + 1;
   var seqPadded = ("0000" + nextSeq).slice(-4); // 4 digit: 0001–9999
   return prefix + seqPadded;
+}
+
+/**
+ * Tulis 1 baris ringkasan order ke sheet "Transaksi Pesanan".
+ * Dipanggil dari pesananModule.postPesananTFC setelah menulis item rows.
+ *
+ * @param {string} invoiceId  - ID invoice yang sudah di-generate
+ * @param {Object[]} rows     - Array item rows dari cart (sama yang dikirim ke "Pesanan TFC")
+ */
+function appendTransaksiPesanan(invoiceId, rows) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(
+    TRANSAKSI_SHEET_NAME,
+  );
+  if (!sheet) return; // skip jika sheet belum ada
+
+  // Aggregate dari item rows
+  var totalModal = 0;
+  var totalPrice = 0;
+  var totalMargin = 0;
+  for (var i = 0; i < rows.length; i++) {
+    totalModal += Number(rows[i].totalModal) || 0;
+    totalPrice += Number(rows[i].hargaTotal) || 0;
+    totalMargin += Number(rows[i].totalMargin) || 0;
+  }
+
+  // TFC tidak punya diskon per-order, jadi discount = 0, final = total
+  var discountPrice = 0;
+  var finalPrice = totalPrice;
+
+  // Ambil data dari row pertama (shared across items in same cart)
+  var first = rows[0];
+
+  sheet.appendRow([
+    invoiceId,                          // id
+    first.tanggalPemesanan,             // tanggal
+    first.bulan,                        // bulan
+    first.owner,                        // nama_pemesan
+    totalModal,                         // total_modal
+    totalPrice,                         // total_price
+    discountPrice,                      // discount_price
+    finalPrice,                         // final_price
+    totalMargin,                        // total_margin
+    first.pembayaran,                   // metode_pembayaran
+    "",                                 // kembalian (dihitung di frontend, opsional)
+    first.status,                       // status
+  ]);
 }
 
 // ================================================
