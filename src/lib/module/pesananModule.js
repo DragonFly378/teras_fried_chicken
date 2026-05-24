@@ -5,8 +5,8 @@
 // ================================================
 // Schema kolom:
 //   ID | Tanggal Pemesanan | Bulan | Pesanan | Jenis | Size | Qty
-//   | Pembayaran | Harga Satuan | Harga Total | Total Modal
-//   | Total Margin | Status | Owner | Deliver | Notes
+//   | Pembayaran | Harga Satuan | Harga Total | Diskon | Harga Final
+//   | Total Modal | Total Margin | Status | Owner | Deliver | Notes
 //
 // Catatan: file ini menggunakan global var SPREADSHEET_ID
 // yang dideklarasikan di code.js (file utama) dan bergantung
@@ -49,17 +49,19 @@ function postPesananTFC(data) {
       row.pembayaran, // Pembayaran
       row.hargaSatuan, // Harga Satuan
       row.hargaTotal, // Harga Total
-      row.totalModal, // Total modal
-      row.totalMargin, // Total margin
+      Number(row.diskon) || 0, // Diskon
+      Number(row.hargaFinal) || 0, // Harga Final
+      row.totalModal, // Total Modal
+      row.totalMargin, // Total Margin
       row.status, // Status
       row.owner, // Owner
-      row.deliver, // Deliver
+      row.deliver || "", // Deliver
       row.notes || "", // Notes
     ]);
   }
 
   // Tulis 1 baris ringkasan ke sheet "Transaksi Pesanan"
-  appendTransaksiPesanan(invoiceId, rows);
+  appendTransaksiPesanan(invoiceId, data);
 
   return {
     status: "success",

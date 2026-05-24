@@ -13,10 +13,13 @@ import {
   ChevronDown,
   Loader2,
   AlertCircle,
+  Percent,
+  Tag,
 } from "lucide-react";
 import Image from "next/image";
 import Swal from "sweetalert2";
 import { Input } from "@/components/ui/input";
+import { InvoiceModal, type Invoice } from "@/app/(dashboard)/history/partials/InvoiceModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +34,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { formatRupiah } from "@/lib/pos-menu";
 import { API_URL } from "@/lib/api/config";
 import { useOfflineOrders } from "@/hooks/useOfflineOrders";
+import { SyncStatusBar } from "@/components/shared/SyncStatusBar";
 
 const BULAN = [
   "January",
@@ -89,6 +93,8 @@ interface SheetRow {
   pembayaran: string;
   hargaSatuan: number;
   hargaTotal: number;
+  diskon: number;
+  hargaFinal: number;
   totalModal: number;
   totalMargin: number;
   status: string;
@@ -114,10 +120,18 @@ function getTodayString() {
   return new Date().toISOString().split("T")[0];
 }
 
-function formatTanggal(dateStr: string): string {
+function getNowTimeString() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatTanggal(dateStr: string, timeStr?: string): string {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
-  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+  const [hh, mm] = (timeStr || "00:00").split(":");
+  return `${parseInt(m)}/${parseInt(d)}/${y} ${hh}:${mm}:00`;
 }
 
 function getBulan(dateStr: string): string {
@@ -168,7 +182,7 @@ function transformPricelist(data: PricelistRow[]): { items: PosMenuItem[]; categ
 
 // ── Component ──────────────────────────────────────────
 export function OrderForm() {
-  const { saveOrder, syncNow } = useOfflineOrders();
+  const { saveOrder, syncNow, pendingCount, isOnline, isSyncing } = useOfflineOrders();
   const [menuItems, setMenuItems] = useState<PosMenuItem[]>([]);
   const [categories, setCategories] = useState<string[]>(["Semua"]);
   const [menuLoading, setMenuLoading] = useState(true);
@@ -179,17 +193,24 @@ export function OrderForm() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pembeli, setPembeli] = useState("");
   const [tanggal, setTanggal] = useState(getTodayString());
+  const [waktu, setWaktu] = useState(getNowTimeString());
   const [pembayaran, setPembayaran] = useState("Qris");
   const [status, setStatus] = useState("Belum bayar");
   const [tglPengantaran, setTglPengantaran] = useState("");
   const [notes, setNotes] = useState("");
   const [uangDiterima, setUangDiterima] = useState("");
 
+  const [discountMode, setDiscountMode] = useState<"persen" | "nominal">("persen");
+  const [discountPersen, setDiscountPersen] = useState(0);
+  const [discountNominal, setDiscountNominal] = useState("");
+
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
   const [pendingRows, setPendingRows] = useState<SheetRow[]>([]);
+  const [invoiceData, setInvoiceData] = useState<Invoice | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
 
   // ── Fetch pricelist from API ────────────────────────
   useEffect(() => {
@@ -268,28 +289,60 @@ export function OrderForm() {
 
   const totalHarga = cart.reduce((sum, item) => sum + item.harga * item.qty, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+  const parsedNominal = parseInt(discountNominal.replace(/\D/g, "")) || 0;
+  const discountPrice =
+    discountMode === "persen"
+      ? Math.round(totalHarga * discountPersen / 100)
+      : Math.min(parsedNominal, totalHarga);
+  const finalPrice = totalHarga - discountPrice;
   const parsedUang = parseInt(uangDiterima.replace(/\D/g, "")) || 0;
-  const kembalian = parsedUang - totalHarga;
+  const kembalian = parsedUang - finalPrice;
 
   // ── Submit ───────────────────────────────────────────
   const buildRows = (): SheetRow[] => {
-    return cart.map((item) => ({
-      tanggalPemesanan: formatTanggal(tanggal),
-      bulan: getBulan(tanggal),
-      pesanan: `${item.menuName} ${item.ukuran}`,
-      jenis: item.jenis,
-      size: item.ukuran,
-      qty: item.qty,
-      pembayaran,
-      hargaSatuan: item.harga,
-      hargaTotal: item.harga * item.qty,
-      totalModal: item.modal * item.qty,
-      totalMargin: (item.harga - item.modal) * item.qty,
-      status,
-      owner: pembeli,
-      deliver: tglPengantaran ? formatTanggal(tglPengantaran) : "",
-      notes,
-    }));
+    const itemCount = cart.length;
+
+    return cart.map((item, index) => {
+      const hargaTotal = item.harga * item.qty;
+      const totalModal = item.modal * item.qty;
+
+      let itemDiskon = 0;
+      if (discountPrice > 0 && itemCount > 0) {
+        if (discountMode === "persen") {
+          // Persen: tiap item kepotong persentasenya
+          itemDiskon = Math.round((hargaTotal * discountPersen) / 100);
+        } else {
+          // Nominal: bagi rata, item terakhir dapat sisa pembulatan
+          const baseDiscount = Math.floor(parsedNominal / itemCount);
+          itemDiskon =
+            index === itemCount - 1
+              ? parsedNominal - baseDiscount * (itemCount - 1)
+              : baseDiscount;
+        }
+      }
+
+      const hargaFinal = hargaTotal - itemDiskon;
+
+      return {
+        tanggalPemesanan: formatTanggal(tanggal, waktu),
+        bulan: getBulan(tanggal),
+        pesanan: `${item.menuName} ${item.ukuran}`,
+        jenis: item.jenis,
+        size: item.ukuran,
+        qty: item.qty,
+        pembayaran,
+        hargaSatuan: item.harga,
+        hargaTotal,
+        diskon: itemDiskon,
+        hargaFinal,
+        totalModal,
+        totalMargin: hargaFinal - totalModal,
+        status,
+        owner: pembeli,
+        deliver: tglPengantaran ? formatTanggal(tglPengantaran) : "",
+        notes,
+      };
+    });
   };
 
   const handleSubmit = () => {
@@ -301,7 +354,6 @@ export function OrderForm() {
   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
-      // Build invoice object for IndexedDB storage
       const invoiceItems = cart.map((item) => ({
         pesanan: `${item.menuName} ${item.ukuran}`,
         jenis: item.jenis,
@@ -311,62 +363,42 @@ export function OrderForm() {
         hargaTotal: item.harga * item.qty,
       }));
 
-      const now = new Date();
-      const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-      const yyyy = wib.getUTCFullYear();
-      const mm = String(wib.getUTCMonth() + 1).padStart(2, "0");
-      const dd = String(wib.getUTCDate()).padStart(2, "0");
-      const seq = String(Math.floor(Math.random() * 9999) + 1).padStart(4, "0");
-      const localInvoiceId = `INV-TFC-${yyyy}${mm}${dd}${seq}`;
+      const payload: { action: string; rows: SheetRow[]; discountPrice?: number; kembalian?: number } = {
+        action: "pesanan",
+        rows: pendingRows,
+      };
+      if (discountPrice > 0) {
+        payload.discountPrice = discountPrice;
+      }
+      if (pembayaran === "Cash" && parsedUang > 0) {
+        payload.kembalian = kembalian;
+      }
 
-      await saveOrder({
-        payload: { action: "pesanan", rows: pendingRows },
-        invoice: {
-          invoiceId: localInvoiceId,
-          tanggalPemesanan: tanggal,
-          bulan: getBulan(tanggal),
-          pembayaran,
-          status,
-          owner: pembeli,
-          deliver: tglPengantaran ? formatTanggal(tglPengantaran) : "",
-          notes,
-          items: invoiceItems,
-          totalQty: totalItems,
-          totalHarga,
-          totalModal: cart.reduce((s, i) => s + i.modal * i.qty, 0),
-          totalMargin: cart.reduce(
-            (s, i) => s + (i.harga - i.modal) * i.qty,
-            0,
-          ),
-        },
-        createdAt: Date.now(),
-        synced: false,
-        attempts: 0,
-        lastError: "",
-      });
+      const invoice: Invoice = {
+        invoiceId: "", // will be replaced by localId from saveOrder
+        tanggalPemesanan: tanggal,
+        bulan: getBulan(tanggal),
+        pembayaran,
+        status,
+        owner: pembeli,
+        deliver: tglPengantaran ? formatTanggal(tglPengantaran) : "",
+        notes,
+        items: invoiceItems,
+        totalQty: totalItems,
+        totalHarga,
+        discountPrice,
+        uangDiterima: pembayaran === "Cash" && parsedUang > 0 ? parsedUang : undefined,
+        kembalian: pembayaran === "Cash" && parsedUang > 0 ? kembalian : undefined,
+        totalModal: cart.reduce((s, i) => s + i.modal * i.qty, 0),
+        totalMargin: finalPrice - cart.reduce((s, i) => s + i.modal * i.qty, 0),
+      };
+
+      const localId = await saveOrder(payload, invoice);
+      invoice.invoiceId = localId;
 
       setShowConfirm(false);
-      setCart([]);
-      setPembeli("");
-      setTanggal(getTodayString());
-      setPembayaran("Qris");
-      setStatus("Belum bayar");
-      setTglPengantaran("");
-      setNotes("");
-      setUangDiterima("");
-      setMobileTab("menu");
-
-      Swal.fire({
-        icon: "success",
-        title: "Pesanan Tersimpan!",
-        text: "Pesanan disimpan & akan otomatis dikirim ke Google Sheet.",
-        confirmButtonColor: "#3D1C0A",
-        timer: 3000,
-        timerProgressBar: true,
-      });
-
-      // Trigger background sync
-      syncNow();
+      setInvoiceData(invoice);
+      setShowInvoice(true);
     } catch {
       setShowConfirm(false);
       Swal.fire({
@@ -378,6 +410,24 @@ export function OrderForm() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleInvoiceClose = () => {
+    setShowInvoice(false);
+    setInvoiceData(null);
+    setCart([]);
+    setPembeli("");
+    setTanggal(getTodayString());
+    setWaktu(getNowTimeString());
+    setPembayaran("Qris");
+    setStatus("Belum bayar");
+    setTglPengantaran("");
+    setNotes("");
+    setUangDiterima("");
+    setDiscountMode("persen");
+    setDiscountPersen(0);
+    setDiscountNominal("");
+    setMobileTab("menu");
   };
 
   // ── Styles ───────────────────────────────────────────
@@ -526,20 +576,29 @@ export function OrderForm() {
               </span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="space-y-2">
             <Input
               type="text"
               placeholder="Nama pembeli *"
               value={pembeli}
               onChange={(e) => setPembeli(e.target.value)}
-              className="h-8 text-sm bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-tfc-orange focus:ring-tfc-orange/30"
+              className="h-9 text-sm bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-tfc-orange focus:ring-tfc-orange/30"
             />
-            <DatePicker
-              value={tanggal}
-              onChange={setTanggal}
-              placeholder="Tanggal"
-              className="h-8 bg-white/10 border-white/20 text-white hover:bg-white/15 hover:border-white/30 w-[160px] shrink-0 [&_svg]:text-white/50"
-            />
+            <div className="flex gap-2">
+              <DatePicker
+                value={tanggal}
+                onChange={setTanggal}
+                placeholder="Tanggal"
+                className="h-9 bg-white/10 border-white/20 text-white hover:bg-white/15 hover:border-white/30 flex-1 [&_svg]:text-white/50"
+              />
+              <input
+                type="time"
+                value={waktu}
+                onChange={(e) => setWaktu(e.target.value)}
+                className="h-9 px-3 text-sm font-body bg-white/10 border border-white/20 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-tfc-orange/30 w-[100px] shrink-0"
+                aria-label="Waktu pesanan"
+              />
+            </div>
           </div>
         </div>
 
@@ -644,6 +703,78 @@ export function OrderForm() {
                 </Select>
               </div>
             </div>
+            {/* Diskon */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className={labelClass}>Diskon</label>
+                <div className="flex rounded-lg overflow-hidden border border-tfc-brown/15">
+                  <button
+                    type="button"
+                    onClick={() => { setDiscountMode("persen"); setDiscountNominal(""); }}
+                    className={`px-2.5 py-1 text-[11px] font-body font-semibold transition-colors flex items-center gap-1 ${
+                      discountMode === "persen"
+                        ? "bg-tfc-brown text-white"
+                        : "bg-white text-tfc-brown hover:bg-tfc-surface"
+                    }`}
+                  >
+                    <Percent className="w-3 h-3" />
+                    Persen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDiscountMode("nominal"); setDiscountPersen(0); }}
+                    className={`px-2.5 py-1 text-[11px] font-body font-semibold transition-colors flex items-center gap-1 ${
+                      discountMode === "nominal"
+                        ? "bg-tfc-brown text-white"
+                        : "bg-white text-tfc-brown hover:bg-tfc-surface"
+                    }`}
+                  >
+                    <Tag className="w-3 h-3" />
+                    Nominal
+                  </button>
+                </div>
+              </div>
+
+              {discountMode === "persen" ? (
+                <div className="flex gap-1.5">
+                  {[5, 10, 15, 50].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setDiscountPersen(discountPersen === p ? 0 : p)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-body font-semibold transition-all duration-150 ${
+                        discountPersen === p
+                          ? "bg-tfc-orange text-white shadow-sm"
+                          : "bg-tfc-surface text-tfc-brown hover:bg-tfc-orange/10 border border-transparent"
+                      }`}
+                    >
+                      {p}%
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Masukkan nominal diskon"
+                  value={discountNominal ? formatRupiah(parsedNominal) : ""}
+                  onChange={(e) => setDiscountNominal(e.target.value.replace(/\D/g, ""))}
+                  className="h-9 text-sm bg-white border-tfc-brown/15 text-tfc-brown font-bold placeholder:text-tfc-muted placeholder:font-normal focus:border-tfc-orange focus:ring-tfc-orange/20"
+                />
+              )}
+
+              {discountPrice > 0 && (
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm font-body">
+                  <span className="text-emerald-700 font-medium">
+                    Potongan{discountMode === "persen" ? ` ${discountPersen}%` : ""}
+                  </span>
+                  <span className="text-emerald-700 font-bold">
+                    -{formatRupiah(discountPrice)}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Cash: Uang Diterima & Kembalian */}
             {pembayaran === "Cash" && (
               <div className="space-y-2">
@@ -717,14 +848,31 @@ export function OrderForm() {
 
         {/* Cart Footer */}
         <div className="px-4 sm:px-5 py-4 border-t-2 border-tfc-brown/10 bg-tfc-surface/50">
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-body text-lg text-tfc-brown font-semibold">
-              Total
-            </span>
-            <span className="font-body text-2xl text-tfc-brown font-bold">
-              {formatRupiah(totalHarga)}
-            </span>
-          </div>
+          {discountPrice > 0 ? (
+            <div className="space-y-1.5 mb-3">
+              <div className="flex items-center justify-between">
+                <span className="font-body text-sm text-tfc-muted">Subtotal</span>
+                <span className="font-body text-sm text-tfc-brown">{formatRupiah(totalHarga)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-body text-sm text-emerald-600">Diskon</span>
+                <span className="font-body text-sm font-semibold text-emerald-600">-{formatRupiah(discountPrice)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1.5 border-t border-tfc-brown/10">
+                <span className="font-body text-lg text-tfc-brown font-semibold">Total</span>
+                <span className="font-body text-2xl text-tfc-brown font-bold">{formatRupiah(finalPrice)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-body text-lg text-tfc-brown font-semibold">
+                Total
+              </span>
+              <span className="font-body text-2xl text-tfc-brown font-bold">
+                {formatRupiah(totalHarga)}
+              </span>
+            </div>
+          )}
           <Button
             type="button"
             onClick={handleSubmit}
@@ -770,6 +918,12 @@ export function OrderForm() {
                 </p>
               </div>
             </div>
+            <SyncStatusBar
+              isOnline={isOnline}
+              pendingCount={pendingCount}
+              isSyncing={isSyncing}
+              onSyncNow={syncNow}
+            />
           </div>
 
           {/* Tab Content */}
@@ -849,13 +1003,21 @@ export function OrderForm() {
                 </p>
               </div>
             </div>
-            <div className="text-right text-sm font-body text-tfc-muted">
-              {new Date().toLocaleDateString("id-ID", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+            <div className="flex items-center gap-4">
+              <SyncStatusBar
+                isOnline={isOnline}
+                pendingCount={pendingCount}
+                isSyncing={isSyncing}
+                onSyncNow={syncNow}
+              />
+              <div className="text-right text-sm font-body text-tfc-muted">
+                {new Date().toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
             </div>
           </div>
 
@@ -944,7 +1106,45 @@ export function OrderForm() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-tfc-brown/10 bg-tfc-surface">
+                    {discountPrice > 0 && (
+                      <>
+                        <tr className="border-t-2 border-tfc-brown/10 bg-tfc-surface">
+                          <td
+                            colSpan={2}
+                            className="px-3 sm:px-4 py-2 text-sm text-tfc-muted text-right sm:hidden"
+                          >
+                            Subtotal
+                          </td>
+                          <td
+                            colSpan={3}
+                            className="px-4 py-2 text-sm text-tfc-muted text-right hidden sm:table-cell"
+                          >
+                            Subtotal
+                          </td>
+                          <td className="px-3 sm:px-4 py-2 text-sm text-tfc-brown text-right">
+                            {formatRupiah(pendingRows.reduce((s, r) => s + r.hargaTotal, 0))}
+                          </td>
+                        </tr>
+                        <tr className="bg-tfc-surface">
+                          <td
+                            colSpan={2}
+                            className="px-3 sm:px-4 py-2 text-sm text-emerald-600 text-right sm:hidden"
+                          >
+                            Diskon
+                          </td>
+                          <td
+                            colSpan={3}
+                            className="px-4 py-2 text-sm text-emerald-600 text-right hidden sm:table-cell"
+                          >
+                            Diskon
+                          </td>
+                          <td className="px-3 sm:px-4 py-2 text-sm font-semibold text-emerald-600 text-right">
+                            -{formatRupiah(discountPrice)}
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                    <tr className={`${discountPrice > 0 ? "" : "border-t-2 border-tfc-brown/10"} bg-tfc-surface`}>
                       <td
                         colSpan={2}
                         className="px-3 sm:px-4 py-3 font-semibold text-tfc-brown text-right sm:hidden"
@@ -958,9 +1158,7 @@ export function OrderForm() {
                         Total
                       </td>
                       <td className="px-3 sm:px-4 py-3 font-bold text-tfc-brown text-right text-sm sm:text-base">
-                        {formatRupiah(
-                          pendingRows.reduce((s, r) => s + r.hargaTotal, 0),
-                        )}
+                        {formatRupiah(finalPrice)}
                       </td>
                     </tr>
                   </tfoot>
@@ -1041,6 +1239,15 @@ export function OrderForm() {
           </div>
         </div>
       )}
+
+      {/* Invoice Modal — shows after order saved */}
+      <InvoiceModal
+        invoice={invoiceData}
+        open={showInvoice}
+        onOpenChange={(open) => {
+          if (!open) handleInvoiceClose();
+        }}
+      />
     </>
   );
 }

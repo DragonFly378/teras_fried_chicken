@@ -1,90 +1,107 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  addPendingOrder,
-  countUnsyncedOrders,
-  type PendingOrder,
-} from "@/lib/offline/db";
-import { syncPendingOrders, isSyncing } from "@/lib/offline/sync";
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { Invoice } from "@/app/(dashboard)/history/partials/InvoiceModal";
+import { addPendingOrder, countUnsyncedOrders, type PendingOrder } from "@/lib/offline/db";
+import { syncAllPending } from "@/lib/offline/sync";
 
-const SYNC_INTERVAL = 15 * 60; // 15 minutes in seconds
+const SYNC_INTERVAL_S = 15 * 60; // 15 minutes in seconds
 
 export function useOfflineOrders() {
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [countdown, setCountdown] = useState(SYNC_INTERVAL);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [countdown, setCountdown] = useState(SYNC_INTERVAL_S);
+  const syncingRef = useRef(false);
 
+  // Refresh pending count from IndexedDB
   const refreshCount = useCallback(async () => {
     try {
       const count = await countUnsyncedOrders();
       setPendingCount(count);
     } catch {
-      // IndexedDB not available
+      // IndexedDB unavailable (SSR, private browsing, etc.)
     }
   }, []);
 
-  // Online/offline detection
-  useEffect(() => {
-    setIsOnline(navigator.onLine);
-    const goOnline = () => setIsOnline(true);
-    const goOffline = () => setIsOnline(false);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-  }, []);
-
-  // Listen for pending-orders-changed events
-  useEffect(() => {
-    const handler = () => {
-      refreshCount();
-      setSyncing(isSyncing());
-    };
-    window.addEventListener("pending-orders-changed", handler);
-    refreshCount();
-    return () => window.removeEventListener("pending-orders-changed", handler);
+  // Sync, refresh count, and reset countdown
+  const syncNow = useCallback(async () => {
+    if (syncingRef.current || !navigator.onLine) return;
+    syncingRef.current = true;
+    setIsSyncing(true);
+    try {
+      await syncAllPending();
+    } finally {
+      syncingRef.current = false;
+      setIsSyncing(false);
+      setCountdown(SYNC_INTERVAL_S);
+      await refreshCount();
+    }
   }, [refreshCount]);
 
-  // Countdown timer for auto-sync
+  // Save order to IndexedDB
+  const saveOrder = useCallback(
+    async (
+      payload: PendingOrder["payload"],
+      invoice: Invoice,
+    ): Promise<string> => {
+      const localId = `LOCAL-${crypto.randomUUID().split("-")[0]}`;
+
+      const order: PendingOrder = {
+        localId,
+        payload,
+        invoice: { ...invoice, invoiceId: localId },
+        status: "pending",
+        createdAt: Date.now(),
+        attempts: 0,
+      };
+
+      await addPendingOrder(order);
+      await refreshCount();
+      window.dispatchEvent(new Event("pending-orders-changed"));
+      return localId;
+    },
+    [refreshCount],
+  );
+
+  // Online/offline + cross-instance sync listeners
   useEffect(() => {
-    setCountdown(SYNC_INTERVAL);
-    timerRef.current = setInterval(() => {
+    setIsOnline(navigator.onLine);
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncNow();
+    };
+    const handleOffline = () => setIsOnline(false);
+    const handleOrdersChanged = () => refreshCount();
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("pending-orders-changed", handleOrdersChanged);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("pending-orders-changed", handleOrdersChanged);
+    };
+  }, [syncNow, refreshCount]);
+
+  // Countdown ticker (every 1 second)
+  useEffect(() => {
+    refreshCount();
+
+    const tick = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          // Trigger sync when countdown reaches 0
-          if (navigator.onLine) {
-            syncPendingOrders();
-          }
-          return SYNC_INTERVAL;
+          // Time's up — trigger sync
+          if (navigator.onLine) syncNow();
+          return SYNC_INTERVAL_S;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    return () => clearInterval(tick);
+  }, [refreshCount, syncNow]);
 
-  const saveOrder = useCallback(
-    async (order: Omit<PendingOrder, "id">) => {
-      await addPendingOrder(order);
-      window.dispatchEvent(new Event("pending-orders-changed"));
-    },
-    [],
-  );
-
-  const syncNow = useCallback(async () => {
-    setSyncing(true);
-    await syncPendingOrders();
-    setSyncing(false);
-    setCountdown(SYNC_INTERVAL);
-  }, []);
-
-  return { saveOrder, syncNow, pendingCount, isOnline, isSyncing: syncing, countdown };
+  return { saveOrder, syncNow, pendingCount, isOnline, isSyncing, countdown };
 }

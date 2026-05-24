@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Wallet,
   ReceiptText,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -26,6 +27,7 @@ const sidebarItems = [
   { href: "/order", label: "Order", icon: ShoppingCart },
   { href: "/history", label: "History Transaksi", icon: ReceiptText },
   { href: "/cashflow", label: "Cashflow", icon: Wallet },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function DashboardLayout({

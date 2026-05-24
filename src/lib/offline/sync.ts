@@ -1,54 +1,66 @@
+import { getPendingOrders, updateOrder, deleteOrder } from "./db";
 import { API_URL } from "@/lib/api/config";
-import {
-  getPendingOrders,
-  updateOrder,
-  deleteOrder,
-  type PendingOrder,
-} from "./db";
 
 const MAX_RETRIES = 10;
-let syncing = false;
 
-export async function syncPendingOrders(): Promise<void> {
-  if (syncing) return;
-  syncing = true;
+// Global lock: prevents multiple hook instances from syncing simultaneously
+let isSyncingGlobal = false;
+
+export async function syncAllPending(): Promise<{
+  synced: number;
+  failed: number;
+}> {
+  // If another sync is already running, skip
+  if (isSyncingGlobal) return { synced: 0, failed: 0 };
+  isSyncingGlobal = true;
 
   try {
-    const orders = await getPendingOrders();
-    const unsynced = orders.filter((o) => !o.synced && o.attempts < MAX_RETRIES);
-
-    for (const order of unsynced) {
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          body: JSON.stringify(order.payload),
-        });
-        const result = await res.json();
-
-        if (result.status === "success" || result.status === "ok") {
-          await deleteOrder(order.id!);
-        } else {
-          await markFailed(order, result.message || "Server returned error");
-        }
-      } catch (err) {
-        await markFailed(
-          order,
-          err instanceof Error ? err.message : "Network error",
-        );
-      }
-    }
+    return await _doSync();
   } finally {
-    syncing = false;
-    window.dispatchEvent(new Event("pending-orders-changed"));
+    isSyncingGlobal = false;
   }
 }
 
-async function markFailed(order: PendingOrder, message: string) {
-  order.attempts += 1;
-  order.lastError = message;
-  await updateOrder(order);
-}
+async function _doSync(): Promise<{ synced: number; failed: number }> {
+  const orders = await getPendingOrders(["pending", "failed"]);
+  let synced = 0;
+  let failed = 0;
 
-export function isSyncing(): boolean {
-  return syncing;
+  // Sequential sync — server uses LockService
+  for (const order of orders) {
+    // Skip permanently failed orders
+    if (order.attempts >= MAX_RETRIES) continue;
+
+    try {
+      await updateOrder(order.localId, { status: "syncing", lastAttempt: Date.now() });
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(order.payload),
+      });
+      const result = await response.json();
+
+      if (result.status === "success" || result.status === "ok") {
+        // Synced successfully — delete from IndexedDB
+        await deleteOrder(order.localId);
+        synced++;
+      } else {
+        await updateOrder(order.localId, {
+          status: "failed",
+          attempts: order.attempts + 1,
+          errorMessage: result.message || "Server returned error",
+        });
+        failed++;
+      }
+    } catch (err) {
+      await updateOrder(order.localId, {
+        status: "failed",
+        attempts: order.attempts + 1,
+        errorMessage: err instanceof Error ? err.message : "Network error",
+      });
+      failed++;
+    }
+  }
+
+  return { synced, failed };
 }

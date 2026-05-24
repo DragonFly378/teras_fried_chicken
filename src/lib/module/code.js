@@ -9,7 +9,9 @@
 //   GET  ?action=cashflow&bulan=March   -> cashflowModule.js  -> getCashflowBulanIni
 //   GET  ?action=history&bulan=April    -> invoiceModule.js   -> getInvoiceHistoryBulanIni
 //   GET  ?action=pricelist              -> pricelistModule.js -> getPricelist
+//   GET  ?action=settings               -> settingsModule.js  -> getProfilToko
 //   POST { action: "cashflow", ... }    -> cashflowModule.js  -> postCashflowTFC
+//   POST { action: "settings", ... }    -> settingsModule.js  -> postProfilToko
 //   POST { rows: [...] }                -> pesananModule.js   -> postPesananTFC
 //                                             (pakai invoiceModule.js -> generateInvoiceId)
 //
@@ -41,6 +43,8 @@ function doGet(e) {
     output = getInvoiceHistoryBulanIni(e.parameter.bulan); // invoiceModule.js
   } else if (action === "pricelist") {
     output = getPricelist(); // pricelistModule.js
+  } else if (action === "settings") {
+    output = getProfilToko(); // settingsModule.js
   } else {
     output = {
       status: "error",
@@ -70,6 +74,8 @@ function doPost(e) {
 
     if (action === "cashflow") {
       output = postCashflowTFC(data);
+    } else if (action === "settings") {
+      output = postProfilToko(data);
     } else {
       // Default: handler order/pesanan TFC
       output = postPesananTFC(data);
@@ -97,6 +103,7 @@ function doPost(e) {
 //   - pesananModule.js   -> postPesananTFC + konstanta sheet
 //   - invoiceModule.js   -> generateInvoiceId, getInvoiceHistoryBulanIni
 //   - pricelistModule.js -> getPricelist
+//   - settingsModule.js  -> getProfilToko, postProfilToko
 //
 // Di Google Apps Script semua file .gs share global scope,
 // jadi router doGet/doPost di atas bisa langsung memanggil

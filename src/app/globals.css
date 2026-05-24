@@ -60,21 +60,27 @@
   background: rgba(61, 28, 10, 0.4);
 }
 
-/* Print-only invoice
-   #invoice-print is rendered as a direct child of <body> via React Portal.
-   By default it's hidden on-screen; during @media print we hide every other
-   direct child of body and show only #invoice-print. */
-#invoice-print {
+/* Print-only containers (invoice A4 & receipt thermal).
+   Rendered as direct children of <body> via React Portal.
+   Hidden on-screen; shown selectively in @media print based on
+   html[data-print-mode] set by usePrintMode hook. */
+#invoice-print,
+#receipt-print {
   display: none;
 }
 
 @media print {
-  /* Hide everything at the top level of body ... */
-  body > *:not(#invoice-print) {
+  /* Hide everything except print containers */
+  body > *:not(#invoice-print):not(#receipt-print) {
     display: none !important;
   }
-  /* ... and show only the invoice container */
-  #invoice-print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Invoice A4 mode */
+  html[data-print-mode="invoice-a4"] #invoice-print {
     display: block !important;
     position: static !important;
     width: 100% !important;
@@ -84,8 +90,23 @@
     box-shadow: none !important;
     border: none !important;
   }
-  html,
-  body {
+
+  /* Receipt thermal mode (58mm & 80mm) */
+  html[data-print-mode="receipt-58mm"] #receipt-print,
+  html[data-print-mode="receipt-80mm"] #receipt-print {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    padding: 2mm 3mm !important;
+    margin: 0 !important;
     background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Force monochrome for receipt */
+  html[data-print-mode^="receipt"] #receipt-print * {
+    color: #000000 !important;
+    border-color: #000000 !important;
   }
 }

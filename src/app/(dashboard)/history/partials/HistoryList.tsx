@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Loader2,
   ReceiptText,
   Search,
   RefreshCw,
@@ -74,6 +73,8 @@ interface HistoryInvoice {
   totalHarga: number;
   totalModal: number;
   totalMargin: number;
+  discountPrice?: number;
+  kembalian?: number;
 }
 
 interface HistoryResponse {
@@ -270,7 +271,17 @@ export function HistoryList() {
   });
 
   const openInvoice = (inv: HistoryInvoice) => {
-    setSelectedInvoice(inv as Invoice);
+    const finalPrice = inv.totalHarga - (inv.discountPrice ?? 0);
+    const invoice: Invoice = {
+      ...inv,
+      ...(inv.pembayaran === "Cash" && inv.kembalian != null
+        ? {
+            kembalian: inv.kembalian,
+            uangDiterima: finalPrice + inv.kembalian,
+          }
+        : {}),
+    };
+    setSelectedInvoice(invoice);
     setModalOpen(true);
   };
 
@@ -385,43 +396,64 @@ export function HistoryList() {
         )}
 
         {/* Summary Cards */}
-        {!loading && !error && (
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-xl border border-tfc-brown/10 p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <ReceiptText className="w-4 h-4 text-tfc-brown" />
-                <span className="text-[11px] sm:text-xs font-body text-tfc-muted">
-                  Total Invoice
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className={`bg-white rounded-xl border border-tfc-brown/10 p-4 animate-pulse ${i === 2 ? "col-span-2 sm:col-span-1" : ""}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-4 h-4 bg-tfc-brown/10 rounded" />
+                  <div className="h-3 w-16 bg-tfc-brown/10 rounded" />
+                </div>
+                <div className="h-6 w-20 bg-tfc-brown/10 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : !error ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border border-tfc-brown/10 p-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-lg bg-tfc-brown/8 flex items-center justify-center">
+                  <ReceiptText className="w-3.5 h-3.5 text-tfc-brown" />
+                </div>
+                <span className="text-xs font-body text-tfc-muted font-medium">
+                  Invoice
                 </span>
               </div>
-              <p className="text-base sm:text-xl font-body font-bold text-tfc-brown">
+              <p className="text-2xl font-body font-bold text-tfc-brown">
                 {summary.totalInvoice}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-tfc-brown/10 p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Package className="w-4 h-4 text-blue-500" />
-                <span className="text-[11px] sm:text-xs font-body text-tfc-muted">
-                  Total Item
+            <div className="bg-white rounded-xl border border-tfc-brown/10 p-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Package className="w-3.5 h-3.5 text-blue-500" />
+                </div>
+                <span className="text-xs font-body text-tfc-muted font-medium">
+                  Item Terjual
                 </span>
               </div>
-              <p className="text-base sm:text-xl font-body font-bold text-tfc-brown">
+              <p className="text-2xl font-body font-bold text-tfc-brown">
                 {summary.totalQty}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-tfc-brown/10 p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <CreditCard className="w-4 h-4 text-emerald-500" />
-                <span className="text-[11px] sm:text-xs font-body text-tfc-muted">
-                  Total Pendapatan
+            <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl border border-emerald-200/60 p-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                </div>
+                <span className="text-xs font-body text-emerald-600/70 font-medium">
+                  Pendapatan
                 </span>
               </div>
-              <p className="text-base sm:text-xl font-body font-bold text-emerald-600 truncate">
+              <p className="text-2xl font-body font-bold text-emerald-700">
                 {formatRupiah(summary.totalOmzet)}
               </p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Search */}
         <div className="relative">
@@ -437,13 +469,69 @@ export function HistoryList() {
 
         {/* List */}
         {loading ? (
-          <div className="bg-white rounded-xl border border-tfc-brown/10 flex items-center justify-center py-16">
-            <div className="text-center space-y-3">
-              <Loader2 className="w-7 h-7 text-tfc-orange animate-spin mx-auto" />
-              <p className="font-body text-sm text-tfc-muted">
-                Memuat history...
-              </p>
-            </div>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,28,10,0.08)] animate-pulse"
+              >
+                {/* Header skeleton */}
+                <div className="px-4 sm:px-5 pt-4 pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-14 bg-tfc-brown/10 rounded" />
+                      <div className="h-4 w-28 bg-tfc-brown/10 rounded" />
+                    </div>
+                    <div className="h-5 w-16 bg-tfc-brown/10 rounded-full" />
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <div className="h-3 w-3 bg-tfc-brown/10 rounded" />
+                    <div className="h-3 w-32 bg-tfc-brown/10 rounded" />
+                    <div className="h-3 w-16 bg-tfc-brown/10 rounded" />
+                  </div>
+                </div>
+                {/* Perforation */}
+                <div className="relative">
+                  <div className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-tfc-surface z-10" />
+                  <div className="absolute right-0 top-0 translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-tfc-surface z-10" />
+                  <div className="border-t border-dashed border-tfc-brown/15 mx-3" />
+                </div>
+                {/* Items skeleton */}
+                <div className="px-4 sm:px-5 py-3 space-y-3">
+                  {Array.from({ length: 2 }).map((_, j) => (
+                    <div key={j} className="flex items-start gap-3">
+                      <div className="w-14 h-14 rounded-lg bg-tfc-brown/8 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-3/4 bg-tfc-brown/10 rounded" />
+                        <div className="h-3 w-1/3 bg-tfc-brown/8 rounded" />
+                        <div className="flex justify-between">
+                          <div className="h-3 w-20 bg-tfc-brown/8 rounded" />
+                          <div className="h-4 w-16 bg-tfc-brown/10 rounded" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Dashed line */}
+                <div className="mx-4 sm:mx-5 border-t border-dashed border-tfc-brown/10" />
+                {/* Total skeleton */}
+                <div className="px-4 sm:px-5 py-3 flex items-center justify-between">
+                  <div className="h-3 w-28 bg-tfc-brown/8 rounded" />
+                  <div className="h-5 w-24 bg-tfc-brown/10 rounded" />
+                </div>
+                {/* Footer perforation */}
+                <div className="relative">
+                  <div className="absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-tfc-surface z-10" />
+                  <div className="absolute right-0 top-0 translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-tfc-surface z-10" />
+                  <div className="border-t border-dashed border-tfc-brown/15 mx-3" />
+                </div>
+                {/* Footer skeleton */}
+                <div className="px-4 sm:px-5 py-3 pb-4 flex items-center justify-between">
+                  <div className="h-3 w-24 bg-tfc-brown/8 rounded" />
+                  <div className="h-7 w-24 bg-tfc-brown/10 rounded-md" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="bg-white rounded-xl border border-tfc-brown/10 px-5 py-12 text-center">
@@ -584,13 +672,44 @@ export function HistoryList() {
                   <div className="mx-4 sm:mx-5 border-t border-dashed border-tfc-brown/15" />
 
                   {/* ── TOTAL row ───────────────────────────── */}
-                  <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
-                    <span className="font-body text-[11px] text-tfc-muted">
-                      Total Pesanan ({inv.totalQty} produk)
-                    </span>
-                    <span className="font-body text-base sm:text-lg font-bold text-tfc-brown">
-                      {formatRupiah(inv.totalHarga)}
-                    </span>
+                  <div className="px-4 sm:px-5 py-3 space-y-1">
+                    {(inv.discountPrice ?? 0) > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-body text-[11px] text-tfc-muted">
+                            Subtotal ({inv.totalQty} produk)
+                          </span>
+                          <span className="font-body text-xs text-tfc-muted line-through">
+                            {formatRupiah(inv.totalHarga)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-body text-[11px] text-tfc-muted">
+                            Diskon
+                          </span>
+                          <span className="font-body text-xs font-semibold text-emerald-600">
+                            -{formatRupiah(inv.discountPrice!)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 pt-1 border-t border-dashed border-tfc-brown/10">
+                          <span className="font-body text-[11px] text-tfc-muted">
+                            Total
+                          </span>
+                          <span className="font-body text-base sm:text-lg font-bold text-tfc-brown">
+                            {formatRupiah(inv.totalHarga - inv.discountPrice!)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-body text-[11px] text-tfc-muted">
+                          Total Pesanan ({inv.totalQty} produk)
+                        </span>
+                        <span className="font-body text-base sm:text-lg font-bold text-tfc-brown">
+                          {formatRupiah(inv.totalHarga)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* ── NOTCH + PERFORATION (before footer) ─── */}
